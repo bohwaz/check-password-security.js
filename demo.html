@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8" />
+	<title>Demo for check password security</title>
+</head>
+<body>
+	<form method="post" action="#">
+		<fieldset>
+			<legend>Personal details</legend>
+			<dl>
+				<dt>Family Name</dt>
+				<dd><input type="text" name="family_name" value="Lynch" /></dd>
+				<dt>First Name</dt>
+				<dd><input type="text" name="first_name" value="David" /></dd>
+				<dt>Login</dt>
+				<dd><input type="text" name="login" value="davel2" /></dd>
+				<dt>Password</dt>
+				<dd><input type="text" data-ignore="true" name="password" id="f_password" value="david.lynch" /></dd>
+				<dd id="message"></dd>
+				<pre id="details"></pre>
+			</dl>
+		</fieldset>
+	</form>
+
+	<script type="text/javascript" src="check-password.js"></script>
+	<script type="text/javascript">
+	function checkPassword()
+	{
+		var pw = document.getElementById('f_password').value;
+		var r = checkPasswordSecurity(document.forms[0], pw, pw);
+		var msg = document.getElementById('message');
+		var details = document.getElementById('details');
+
+		if (r.fail && r.security == 'short')
+		{
+			msg.innerHTML = 'Password is too short (min. 8 characters).';
+		}
+		else if (r.fail && r.security == 'personal_data')
+		{
+			msg.innerHTML = 'The password contains personal data.';
+		}
+		else if (r.fail)
+		{
+			msg.innerHTML = 'Password is too weak.';
+		}
+		else if (r.security == 'medium')
+		{
+			msg.innerHTML = 'Password is barely OK.';
+		}
+		else if (r.security == 'good')
+		{
+			msg.innerHTML = 'Password is good.';
+		}
+		else
+		{
+			msg.innerHTML = 'Password is passable.';
+		}
+
+		details.innerHTML = JSON.stringify(r);
+		console.log('ok');
+	}
+	document.getElementById('f_password').onkeyup = checkPassword;
+	document.getElementById('f_password').onchange = checkPassword;
+	</script>
+</body>
