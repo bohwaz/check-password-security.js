@@ -1,15 +1,25 @@
 (function () {
 	// Extend RegExp object to include a quote method
 	RegExp.quote = function(str) {
-	    return (str+'').replace(/([.?*+^$[\]\\(){}|-])/g, "\\$1");
+		return (str+'').replace(/([.?*+^$[\]\\(){}|-])/g, "\\$1");
 	};
 
-	window.checkPasswordSecurity = function (form, password, password_repeat)
+	/**
+	 * Checks a passwords security against a set of safety rules
+	 * @param  {string} password        User entered password
+	 * @param  {string} password_repeat (Optional) Second user password (to check against typing mistakes)
+	 * @param  {object} form            (Optional) HTML form element where to look for user input that shouldn't
+	 * be in the password. Use a "data-ignore" attribute on any element that shouldn't be checked against
+	 * if needed.
+	 * @param  {array} 	blacklist       (Optional) List of Regexp patterns that should reject the password.
+	 * @return {object}                 Password check result
+	 */
+	window.checkPasswordSecurity = function (password, password_repeat, form, blacklist)
 	{
 		var score = 0;
 
 		// Password and its repeat don't match, stop here
-		if (password !== password_repeat)
+		if (password_repeat !== null && password !== password_repeat)
 		{
 			return {
 				password_match: false,
@@ -30,48 +40,66 @@
 			};
 		}
 
-		var inputs = form.getElementsByTagName('input');
-
-		// Find all user text entry in the form and try to find if any word from any
-		// input is also in the password, this is to rate stuff like SurnameName1988
-		for (var i = 0; i < inputs.length; i++)
+		if (form)
 		{
-			var input = inputs[i];
-			var type = input.type.toLowerCase();
+			var inputs = form.getElementsByTagName('input');
 
-			// Only use user entry text
-			if (type != 'text' && type != 'email' && type != 'url' && type != 'tel')
+			// Find all user text entry in the form and try to find if any word from any
+			// input is also in the password, this is to rate stuff like SurnameName1988
+			for (var i = 0; i < inputs.length; i++)
 			{
-				continue;
-			}
+				var input = inputs[i];
+				var type = input.type.toLowerCase();
 
-			// Empty input
-			if (input.value.replace(/\s/, '') == '' || input.getAttribute('data-ignore'))
+				// Only use user entry text
+				if (type != 'text' && type != 'email' && type != 'url' && type != 'tel')
+				{
+					continue;
+				}
+
+				// Empty input
+				if (input.value.replace(/\s/, '') == '' || input.getAttribute('data-ignore'))
+				{
+					continue;
+				}
+
+				// Split words (\W = non-word characters)
+				var v = input.value.split(/[\W]+/);
+
+				for (var j = 0; j < v.length; j++)
+				{
+					// Don't match against words too short
+					if (v[j].length < 4)
+						continue;
+
+					var r = new RegExp(RegExp.quote(v[j]), 'i');
+
+					if (password.match(r))
+					{
+						return {
+							password_match: true,
+							fail:			true,
+							security:		'personal_data',
+							score: 			0,
+						};
+					}
+				}
+			}
+		}
+
+		if (blacklist)
+		{
+			for (var i = 0; i < blacklist.length; i++)
 			{
-				continue;
-			}
-
-			// Split words (\W = non-word characters)
-	    	var v = input.value.split(/[\W]+/);
-
-	    	for (var j = 0; j < v.length; j++)
-	    	{
-	    		// Don't match against words too short
-		    	if (v[j].length < 4)
-		    		continue;
-
-		    	var r = new RegExp(RegExp.quote(v[j]), 'i');
-
-		    	if (password.match(r))
-		    	{
-		    		console.log(r);
-		    		return {
+				if (blacklist[i].test(password))
+				{
+					return {
 						password_match: true,
 						fail:			true,
-						security:		'personal_data',
+						security:		'blacklist',
 						score: 			0,
 					};
-		    	}
+				}
 			}
 		}
 
@@ -94,40 +122,40 @@
 		};
 	};
 
-    function scorePassword (pass) {
-	    var score = 0;
+	function scorePassword (pass) {
+		var score = 0;
 
-	    // Match any birthday year
-	    if (/(19\d{2}|20[0-2]\d)/g.test(pass))
-	    {
-	    	score -= 15;
-	    }
+		// Match any birthday year
+		if (/(19\d{2}|20[0-2]\d)/g.test(pass))
+		{
+			score -= 15;
+		}
 
-	    // Every unique letter awarded, up to 5
-	    var letters = new Object();
+		// Every unique letter awarded, up to 5
+		var letters = new Object();
 
-	    for (var i = 0; i < pass.length; i++)
-	    {
-	        letters[pass[i]] = (letters[pass[i]] || 0) + 1;
-	        score += 5.0 / letters[pass[i]];
-	    }
+		for (var i = 0; i < pass.length; i++)
+		{
+			letters[pass[i]] = (letters[pass[i]] || 0) + 1;
+			score += 5.0 / letters[pass[i]];
+		}
 
-	    // Bonus points for mixing other characters
-	    var variations = {
-	        digits: /\d/.test(pass),
-	        lower: /[a-z]/.test(pass),
-	        upper: /[A-Z]/.test(pass),
-	        nonWords: /\W/.test(pass),
-	    };
+		// Bonus points for mixing other characters
+		var variations = {
+			digits: /\d/.test(pass),
+			lower: /[a-z]/.test(pass),
+			upper: /[A-Z]/.test(pass),
+			nonWords: /\W/.test(pass),
+		};
 
-	    variationCount = 0;
-	    for (var check in variations)
-	    {
-	        variationCount += (variations[check] == true) ? 1 : 0;
-	    }
+		variationCount = 0;
+		for (var check in variations)
+		{
+			variationCount += (variations[check] == true) ? 1 : 0;
+		}
 
-	    score += (variationCount - 1) * 10;
+		score += (variationCount - 1) * 10;
 
-	    return parseInt(score);
+		return parseInt(score);
 	}
 }());

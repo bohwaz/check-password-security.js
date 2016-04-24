@@ -28,7 +28,7 @@
 	function checkPassword()
 	{
 		var pw = document.getElementById('f_password').value;
-		var r = checkPasswordSecurity(document.forms[0], pw, pw);
+		var r = checkPasswordSecurity(pw, pw, document.forms[0], [/secret/, /azerty/]);
 		var msg = document.getElementById('message');
 		var details = document.getElementById('details');
 
@@ -39,6 +39,10 @@
 		else if (r.fail && r.security == 'personal_data')
 		{
 			msg.innerHTML = 'The password contains personal data.';
+		}
+		else if (r.fail && r.security == 'blacklist')
+		{
+			msg.innerHTML = 'The password is blacklisted.';
 		}
 		else if (r.fail)
 		{
